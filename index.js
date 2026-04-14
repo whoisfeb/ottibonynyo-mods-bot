@@ -27,11 +27,20 @@ const CONFIG = {
     ANNOUNCE_CHANNEL: '1493465308327837696',
     LOG_CHANNEL: '1486632361155362847',
     ADMIN_ROLE_ID: '1112618217421148212', 
-    QRIS_FILE_NAME: 'qrisgopay.png' 
+    QRIS_FILE_NAME: 'qrisgopay.png' ,
+    ALLOWED_CHANNELS: [
+        '1444172572144046144', 
+        '1444172550266687558'// Tambahkan ID channel lain di sini, pisahkan dengan koma
+    ]
 };
 
 // --- DAFTAR KATA KASAR ---
-const BADWORDS = ['pler', 'kontol', 'memek', 'anjing', 'bgst', 'tolol', 'bangsat'];
+const BADWORDS = [
+  'free', 'tolol', 'goblok', 'bego', 'pepek', 'dongo', 'tai', 'kontol', 
+  'bio', 'sexcam', 'entot', 'ngentot', 'join', 'invite', 'anjing', 
+  'babi', 'memek', 'ngewe', 'ewe', 'lonte', 'pler', 'bgst', 'bangsat'
+];
+
 
 const RANDOM_MESSAGES = [
     "Butuh bantuan? Admin kami siap melayani di jam operasional!",
@@ -79,7 +88,7 @@ client.once('ready', async () => {
             .setColor(0x2ECC71)
             .setTitle('🚀 System Core Online')
             .addFields(
-                { name: '📡 Status', value: '` Operational `', inline: true },
+                { name: '📡 Status', value: '` Online `', inline: true },
                 { name: '⚡ Latency', value: `\` ${client.ws.ping}ms \``, inline: true }
             )
             .setTimestamp();
@@ -90,7 +99,7 @@ client.once('ready', async () => {
         const announceChannel = client.channels.cache.get(CONFIG.ANNOUNCE_CHANNEL);
         if (announceChannel) {
             const text = RANDOM_MESSAGES[Math.floor(Math.random() * RANDOM_MESSAGES.length)];
-            announceChannel.send(`📢 **INFO STORE**\n\n${text}`);
+            announceChannel.send(`📢 **Excellence Guard**\n\n${text}`);
         }
     }, 3600000);
 });
@@ -159,32 +168,42 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 // --- EVENT: MESSAGE MONITORING (ANTI-BADWORD & AUTO RESPONSE) ---
+// --- EVENT: MESSAGE MONITORING (ANTI-BADWORD & AUTO RESPONSE) ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // 1. LOGIKA ANTI-BADWORD
-    const foundBadWord = BADWORDS.some(word => message.content.toLowerCase().includes(word));
-
+    // 1. LOGIKA ANTI-BADWORD (Berjalan di SEMUA channel)
+    // 1. LOGIKA ANTI-BADWORD (Lebih Akurat)
+    // Regex ini memastikan kata kasar harus berdiri sendiri (bukan bagian dari kata lain)
+    const foundBadWord = BADWORDS.find(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'i'); // \b adalah boundary (batas kata)
+        return regex.test(message.content);
+    });
+    
     if (foundBadWord) {
         try {
             await message.delete();
-            return message.channel.send(`Hey ${message.author}, astagfirullah tidak boleh mengetik seperti itu ya!`);
+            return message.channel.send(`Hey ${message.author}, astagfirullah tidak boleh mengetik kata kata kasar yah sayang!`);
         } catch (error) {
             console.error('[ERROR] Gagal menghapus pesan kasar:', error);
         }
-        return; // Berhenti di sini jika pesan mengandung kata kasar
+        return; 
     }
 
-    // 2. LOGIKA AUTO RESPONSE
-    const autoResponses = [
-        `Halo ${message.author.username}! Ada yang bisa dibantu?`,
-        "Halo! Kalau mau order atau request lua atau hanya ingin bertanya silahkan <#1144295586154151996> aja ya",
-        "Admin akan segera merespon chat kamu, mohon ditunggu ya."
-    ];
 
-    if (Math.random() < 0.3) {
-        message.reply(autoResponses[Math.floor(Math.random() * autoResponses.length)]);
+    // 2. AUTO RESPONSE (Hanya jalan di channel yang ada dalam daftar ALLOWED_CHANNELS)
+    if (CONFIG.ALLOWED_CHANNELS.includes(message.channel.id)) {
+        const autoResponses = [
+            `Halo <@${message.author.id}>! Ada yang bisa dibantu?`,
+            "Halo! Kalau mau order atau request lua atau hanya ingin bertanya silahkan <#1144295586154151996> aja ya",
+            "Admin akan segera merespon chat kamu, mohon ditunggu ya."
+        ];
+
+        if (Math.random() < 0.3) {
+            message.reply(autoResponses[Math.floor(Math.random() * autoResponses.length)]);
+        }
     }
 });
 
-client.login(CONFIG.TOKEN);
+
+client.login(CONFIG.DISCORD_TOKEN);
