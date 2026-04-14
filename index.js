@@ -26,9 +26,12 @@ const CONFIG = {
     GUILD_ID: '1112618217421148210',  
     ANNOUNCE_CHANNEL: '1493465308327837696',
     LOG_CHANNEL: '1486632361155362847',
-    ADMIN_ROLE_ID: '1112618217421148212', // Ganti dengan ID Role Admin kamu
+    ADMIN_ROLE_ID: '1112618217421148212', 
     QRIS_FILE_NAME: 'qrisgopay.png' 
 };
+
+// --- DAFTAR KATA KASAR ---
+const BADWORDS = ['pler', 'kontol', 'memek', 'anjing', 'bgst', 'tolol', 'bangsat'];
 
 const RANDOM_MESSAGES = [
     "Butuh bantuan? Admin kami siap melayani di jam operasional!",
@@ -95,7 +98,6 @@ client.once('ready', async () => {
 // --- EVENT: INTERACTION (SLASH COMMANDS & BUTTONS) ---
 client.on('interactionCreate', async (interaction) => {
     
-    // 1. Logika Perintah /payment
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'payment') {
             
@@ -139,7 +141,6 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // 2. Logika Respon Tombol
     if (interaction.isButton()) {
         if (interaction.customId === 'pay_bank_info') {
             await interaction.reply({ 
@@ -157,10 +158,24 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-// --- EVENT: AUTO RESPONSE ---
-client.on('messageCreate', (message) => {
+// --- EVENT: MESSAGE MONITORING (ANTI-BADWORD & AUTO RESPONSE) ---
+client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
+    // 1. LOGIKA ANTI-BADWORD
+    const foundBadWord = BADWORDS.some(word => message.content.toLowerCase().includes(word));
+
+    if (foundBadWord) {
+        try {
+            await message.delete();
+            return message.channel.send(`Hey ${message.author}, astagfirullah tidak boleh mengetik seperti itu ya!`);
+        } catch (error) {
+            console.error('[ERROR] Gagal menghapus pesan kasar:', error);
+        }
+        return; // Berhenti di sini jika pesan mengandung kata kasar
+    }
+
+    // 2. LOGIKA AUTO RESPONSE
     const autoResponses = [
         `Halo ${message.author.username}! Ada yang bisa dibantu?`,
         "Halo! Kalau mau order atau request lua atau hanya ingin bertanya silahkan <#1144295586154151996> aja ya",
