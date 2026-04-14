@@ -26,7 +26,8 @@ const CONFIG = {
     GUILD_ID: '1112618217421148210',  
     ANNOUNCE_CHANNEL: '1493465308327837696',
     LOG_CHANNEL: '1486632361155362847',
-    QRIS_FILE_NAME: 'qrisgopay.png' // Pastikan file ini ada di repository
+    ADMIN_ROLE_ID: '1112618217421148212', // Ganti dengan ID Role Admin kamu
+    QRIS_FILE_NAME: 'qrisgopay.png' 
 };
 
 const RANDOM_MESSAGES = [
@@ -60,10 +61,8 @@ async function registerCommands() {
     }
 }
 
-// --- EVENT: READY ---
 client.once('ready', async () => {
     console.log(`[LOG] Berhasil masuk sebagai ${client.user.tag}`);
-    
     await registerCommands();
 
     client.user.setPresence({
@@ -76,14 +75,11 @@ client.once('ready', async () => {
         const onlineEmbed = new EmbedBuilder()
             .setColor(0x2ECC71)
             .setTitle('🚀 System Core Online')
-            .setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL() })
             .addFields(
                 { name: '📡 Status', value: '` Operational `', inline: true },
                 { name: '⚡ Latency', value: `\` ${client.ws.ping}ms \``, inline: true }
             )
-            .setTimestamp()
-            .setFooter({ text: 'Automated Runner via GitHub Actions' });
-        
+            .setTimestamp();
         logChannel.send({ embeds: [onlineEmbed] });
     }
 
@@ -98,31 +94,41 @@ client.once('ready', async () => {
 
 // --- EVENT: INTERACTION (SLASH COMMANDS & BUTTONS) ---
 client.on('interactionCreate', async (interaction) => {
-    // Handling Slash Command /payment
+    
+    // 1. Logika Perintah /payment
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'payment') {
+            
+            // CEK ROLE ID ADMIN
+            if (!interaction.member.roles.cache.has(CONFIG.ADMIN_ROLE_ID)) {
+                return interaction.reply({ 
+                    content: '❌ Kamu tidak memiliki izin (Role Admin) untuk menggunakan perintah ini!', 
+                    ephemeral: true 
+                });
+            }
+
             const qrisFile = new AttachmentBuilder(`./${CONFIG.QRIS_FILE_NAME}`);
 
             const paymentEmbed = new EmbedBuilder()
                 .setTitle('💳 METODE PEMBAYARAN RESMI')
-                .setColor(0x5865F2)
-                .setDescription('Silakan klik tombol di bawah ini untuk melihat detail pembayaran:')
+                .setColor(0x00FF00)
+                .setDescription('Scan QRIS di bawah ini atau klik tombol untuk metode pembayaran lainnya:')
                 .setImage(`attachment://${CONFIG.QRIS_FILE_NAME}`)
-                .setFooter({ text: 'Harap kirim bukti transfer ke Admin.' })
+                .setFooter({ text: 'Community Store • Harap lampirkan bukti transfer.' })
                 .setTimestamp();
 
             const row = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('pay_gopay')
-                        .setLabel('GoPay / QRIS')
-                        .setEmoji('📱')
-                        .setStyle(ButtonStyle.Success),
-                    new ButtonBuilder()
-                        .setCustomId('pay_bank')
+                        .setCustomId('pay_bank_info')
                         .setLabel('Transfer Bank')
                         .setEmoji('🏦')
                         .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('pay_gopay_info')
+                        .setLabel('Nomor GoPay')
+                        .setEmoji('📱')
+                        .setStyle(ButtonStyle.Secondary),
                 );
 
             await interaction.reply({ 
@@ -133,31 +139,31 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // Handling Button Clicks
+    // 2. Logika Respon Tombol
     if (interaction.isButton()) {
-        if (interaction.customId === 'pay_gopay') {
+        if (interaction.customId === 'pay_bank_info') {
             await interaction.reply({ 
-                content: '📌 **Pembayaran via GoPay / QRIS:**\nNomor GoPay: `0822-7109-7940\nAtau silakan scan gambar QRIS yang tertera di atas.\n\n*Jangan lupa kirim bukti transfer ke admin!*', 
+                content: '📌 **Detail Transfer Bank:**\n- **Bank BRI:** `0021-01-xxxxxx`\n- **Bank Mandiri:** `124-00-xxxxxx`\n\n*Kirim bukti transfer ke admin jika sudah membayar.*', 
                 ephemeral: true 
             });
         }
 
-        if (interaction.customId === 'pay_bank') {
+        if (interaction.customId === 'pay_gopay_info') {
             await interaction.reply({ 
-                content: '📌 **Pembayaran via Transfer Bank:**\n- **Bank BRI:** `Coming Soon`\n- **Bank Mandiri:** `Coming Soon`\n\n*Jangan lupa kirim bukti transfer ke admin!*', 
+                content: '📌 **Detail GoPay:**\nNomor: `0812-xxxx-xxxx` (A/N Toko Kamu)\n\n*Kirim bukti transfer ke admin jika sudah membayar.*', 
                 ephemeral: true 
             });
         }
     }
 });
 
-// --- EVENT: AUTO RESPONSE (PESAN PUBLIK) ---
+// --- EVENT: AUTO RESPONSE ---
 client.on('messageCreate', (message) => {
     if (message.author.bot) return;
 
     const autoResponses = [
         `Halo ${message.author.username}! Ada yang bisa dibantu?`,
-        "Halo! Kalau mau order atau request lua atau hanya ingin bertnaya silahakan <#1144295586154151996> aja ya",
+        "Halo! Kalau mau order atau request lua atau hanya ingin bertanya silahkan <#1144295586154151996> aja ya",
         "Admin akan segera merespon chat kamu, mohon ditunggu ya."
     ];
 
