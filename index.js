@@ -1,4 +1,12 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActivityType } = require('discord.js');
+const { 
+    Client, 
+    GatewayIntentBits, 
+    EmbedBuilder, 
+    ActivityType, 
+    REST, 
+    Routes,
+    AttachmentBuilder // Tambahkan ini
+} = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -8,11 +16,14 @@ const client = new Client({
     ]
 });
 
-// --- KONFIGURASI ID (Ganti dengan ID channel kamu) ---
+// --- KONFIGURASI ---
 const CONFIG = {
-    ANNOUNCE_CHANNEL_ID: '1493465308327837696',
-    LOG_CHANNEL_ID: '1486632361155362847',
-    AUTO_RESPONSE_CHANCE: 0.3 // Peluang respon 30%
+    TOKEN: process.env.DISCORD_TOKEN,
+    CLIENT_ID: '1486187371476029610', // Ambil di Developer Portal (General Information)
+    GUILD_ID: '1112618217421148210',       // Klik kanan nama server > Copy ID
+    ANNOUNCE_CHANNEL: '1493465308327837696',
+    LOG_CHANNEL: '1486632361155362847',
+    QRIS_FILE_NAME: 'qrisgopay.png'
 };
 
 const RANDOM_MESSAGES = [
@@ -23,65 +34,104 @@ const RANDOM_MESSAGES = [
     "Terima kasih telah mendukung komunitas ini!"
 ];
 
-// --- 1. STATUS SAAT BOT NYALA ---
-client.once('ready', () => {
-    console.log(`Bot Aktif sebagai ${client.user.tag}`);
-    client.user.setActivity('Community Store', { type: ActivityType.Watching });
+// --- REGISTER SLASH COMMANDS ---
+const commands = [
+    {
+        name: 'payment',
+        description: 'Menampilkan informasi metode pembayaran resmi store',
+    },
+];
 
-    const logChannel = client.channels.cache.get(CONFIG.LOG_CHANNEL_ID);
+const rest = new REST({ version: '10' }).setToken(CONFIG.TOKEN);
+
+async function registerCommands() {
+    try {
+        console.log('[SYSTEM] Mendaftarkan Slash Commands...');
+        await rest.put(
+            Routes.applicationGuildCommands(CONFIG.CLIENT_ID, CONFIG.GUILD_ID),
+            { body: commands },
+        );
+        console.log('[SYSTEM] Slash Commands berhasil didaftarkan!');
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// --- EVENT: READY ---
+client.once('ready', async () => {
+    console.log(`[LOG] Berhasil masuk sebagai ${client.user.tag}`);
+    
+    // Registrasi Command ke Server
+    await registerCommands();
+
+    // Status Professional
+    client.user.setPresence({
+        activities: [{ name: 'Community Store', type: ActivityType.Watching }],
+        status: 'online',
+    });
+
+    // Notifikasi Online Professional
+    const logChannel = client.channels.cache.get(CONFIG.LOG_CHANNEL);
     if (logChannel) {
-        logChannel.send("✅ **Bot System Online:** Siap melayani pesanan!");
+        const onlineEmbed = new EmbedBuilder()
+            .setColor(0x2ECC71)
+            .setTitle('🚀 System Core Online')
+            .setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL() })
+            .addFields(
+                { name: '📡 Status', value: '` Operational `', inline: true },
+                { name: '⚡ Latency', value: `\` ${client.ws.ping}ms \``, inline: true }
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Automated Runner via GitHub Actions' });
+        
+        logChannel.send({ embeds: [onlineEmbed] });
     }
 
-    // Announcement otomatis setiap 1 jam
+    // Auto Announcement 1 Jam Sekali
     setInterval(() => {
-        const announceChannel = client.channels.cache.get(CONFIG.ANNOUNCE_CHANNEL_ID);
+        const announceChannel = client.channels.cache.get(CONFIG.ANNOUNCE_CHANNEL);
         if (announceChannel) {
             const text = RANDOM_MESSAGES[Math.floor(Math.random() * RANDOM_MESSAGES.length)];
-            announceChannel.send(`📢 **PENGUMUMAN** 📢\n\n${text}`);
+            announceChannel.send(`📢 **INFO STORE**\n\n${text}`);
         }
-    }, 3600000); 
+    }, 3600000);
 });
 
-// --- 2. LOG SAAT BOT DIMATIKAN (Manual/Restart) ---
-process.on('SIGINT', async () => {
-    const logChannel = client.channels.cache.get(CONFIG.LOG_CHANNEL_ID);
-    if (logChannel) await logChannel.send("⚠️ **Bot System Offline:** Sedang proses pemeliharaan/restart.");
-    process.exit();
-});
+// --- EVENT: INTERACTION (SLASH COMMANDS) ---
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
 
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
-
-    // --- 3. FITUR PAYMENT (/payment) ---
-    if (message.content === '/payment') {
+    if (interaction.commandName === 'payment') {
         const paymentEmbed = new EmbedBuilder()
             .setTitle('💳 METODE PEMBAYARAN RESMI')
             .setColor(0x5865F2)
-            .setDescription('Gunakan metode di bawah ini untuk transaksi yang aman:')
+            .setDescription('Silakan gunakan salah satu metode pembayaran di bawah ini:')
+            .setImage(CONFIG.QRIS_URL)
             .addFields(
-                { name: '📱 E-Wallet', value: '• **GoPay:** 0822-7109-7940\n• **QRIS GoPay Merchant:** (Hubungi Admin)', inline: true },
-                { name: '🏦 Bank Transfer', value: '• **Bank BRI:** COMING SOON\n• **Mandiri:** COMING SOON', inline: true }
+                { name: '📱 E-Wallet', value: '• **GoPay:** 0812-xxxx-xxxx\n• **QRIS:** Scan Gambar Di Atas', inline: true },
+                { name: '🏦 Bank Transfer', value: '• **Bank BRI:** 0021-01-xxxxxx\n• **Mandiri:** 124-00-xxxxxx', inline: true }
             )
-            .setTimestamp()
-            .setFooter({ text: 'Community Store System' });
+            .setFooter({ text: 'Harap kirim bukti transfer ke Admin.' })
+            .setTimestamp();
 
-        return message.channel.send({ embeds: [paymentEmbed] });
-    }
-
-    // --- 4. RESPON OTOMATIS (DI CHANNEL PUBLIK) ---
-    if (!message.content.startsWith('/')) {
-        const responses = [
-            `Halo ${message.author.username}! Ada yang bisa dibantu soal pesanan?`,
-            "Terima kasih sudah chat! Tunggu sebentar ya, admin akan segera merespon.",
-            "Wah, hari ini ramai ya! Jangan lupa cek promo terbaru.",
-            "Halo! Kalau mau order atau request lua atau hanya ingin bertnaya silahakan <#1144295586154151996> aja ya."
-        ];
-
-        if (Math.random() < CONFIG.AUTO_RESPONSE_CHANCE) {
-            message.reply(responses[Math.floor(Math.random() * responses.length)]);
-        }
+        await interaction.reply({ embeds: [paymentEmbed] });
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// --- EVENT: AUTO RESPONSE (PESAN PUBLIK) ---
+client.on('messageCreate', (message) => {
+    if (message.author.bot) return;
+
+    const autoResponses = [
+        `Halo ${message.author.username}! Ada yang bisa dibantu?`,
+        "Halo! Kalau mau order atau request lua atau hanya ingin bertnaya silahakan <#1144295586154151996> aja ya",
+        "Admin akan segera merespon chat kamu, mohon ditunggu ya."
+    ];
+
+    // Peluang 30% merespon
+    if (Math.random() < 0.3) {
+        message.reply(autoResponses[Math.floor(Math.random() * autoResponses.length)]);
+    }
+});
+
+client.login(CONFIG.TOKEN);
