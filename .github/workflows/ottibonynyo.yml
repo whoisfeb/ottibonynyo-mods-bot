@@ -1,13 +1,19 @@
-name: Community Bot Runner
+name: Ottibonynyo Mods
 
 on:
   schedule:
-    - cron: '0 */5 * * *' # Restart setiap 5 jam agar tidak timeout
+    - cron: '0 */5 * * *'
   workflow_dispatch:
+
+# Tambahkan baris di bawah ini:
+concurrency:
+  group: bot-running
+  cancel-in-progress: true
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    # ... sisa kode lainnya
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
