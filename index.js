@@ -72,7 +72,7 @@ const RANDOM_MESSAGES = [
     "Happy Modding! Semoga hari kalian menyenangkan di server ini.",
     "Jangan lupa makan dan minum saat asyik bermain game.",
     "Kreativitas tanpa batas bersama Ottibonynyo Mods!",
-    "Cek katalog kami secara berkala untuk promo menarik.",
+    "Cek katalog kami secara berkala untuk promo menarik."
     
 ];
 
