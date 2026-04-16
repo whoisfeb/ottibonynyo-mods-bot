@@ -46,7 +46,7 @@ const RANDOM_MESSAGES = [
     "Jika ingin mendapatkan special mods dari ottibonynyo mods silahkan ke channel <#1466660218686668894> jika no acces silahkan <#1486252838186127360> terlebih dahulu ya. 🔥",
     "Pembayaran aman dan cepat via QRIS & Bank Transfer.",
     "Jangan lupa untuk selalu sopan dalam berinteraksi ya!",
-    "Terima kasih telah mendukung komunitas ini!"
+    "Terima kasih telah mendukung komunitas ini!",
     "Selalu cek update terbaru di channel pengumuman agar tidak ketinggalan info mod!",
     "Ingat, dilarang melakukan spam di channel publik. Hargai kenyamanan sesama member.",
     "Gunakan fitur search sebelum bertanya, mungkin pertanyaanmu sudah pernah dijawab sebelumnya.",
