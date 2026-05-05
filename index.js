@@ -26,7 +26,11 @@ const CONFIG = {
     GUILD_ID: '1112618217421148210',  
     ANNOUNCE_CHANNEL: '1494269319654412328',
     LOG_CHANNEL: '1486632361155362847',
-    ADMIN_ROLE_ID: '1112618217421148212', 
+    ADMIN_ROLE_ID: [
+    '1112618217421148212',
+    'ROLE_ID_KEDUA',
+    'ROLE_ID_KETIGA'
+], 
     QRIS_FILE_NAME: 'qrisgopay.png' ,
     ALLOWED_CHANNELS: [
         '1444172572144046144', 
@@ -451,6 +455,16 @@ COMING SOON
 // --- EVENT: MESSAGE MONITORING (ANTI-BADWORD & AUTO RESPONSE) ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
+
+    // ⛔ SKIP JIKA USER PUNYA ROLE ADMIN
+    if (
+        message.member &&
+        CONFIG.ADMIN_ROLE_ID.some(roleID =>
+            message.member.roles.cache.has(roleID)
+        )
+    ) {
+        return;
+    }
 
     const foundBadWord = BADWORDS.find(word => {
         const regex = new RegExp(`\\b${word}\\b`, 'i');
