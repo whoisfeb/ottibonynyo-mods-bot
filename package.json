@@ -1,8 +1,16 @@
 {
-  "name": "ottibonynyo-mods",
+  "name": "Ottibonynyo Mods",
   "version": "1.0.0",
+  "description": "Sistem Bot Ottibonynyo Mods",
   "main": "index.js",
   "dependencies": {
-    "discord.js": "^14.14.1"
+    "@supabase/supabase-js": "^2.39.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "axios": "^1.6.0"
+  },
+  "scripts": {
+    "start": "node index.js & node welcomer.js",
+    "build": "echo 'No build step required'"
   }
 }
