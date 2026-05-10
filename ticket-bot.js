@@ -15,13 +15,13 @@ const client = new Client({
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CATEGORY_ID = '1112618218146771009';
-const LOG_CHANNEL_ID = '1357044655631499447'; // Pastikan ini ada di GitHub Secrets
+const LOG_CHANNEL_ID = '1357044655631499447'; 
 
 client.once('ready', () => {
     console.log(`✅ Bot Tiket Online: ${client.user.tag}`);
 });
 
-// Panel Utama
+// --- PANEL UTAMA ---
 client.on('messageCreate', async (message) => {
     if (message.content === '!setup-tiket' && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         const embed = new EmbedBuilder()
@@ -44,8 +44,22 @@ client.on('messageCreate', async (message) => {
 
 client.on('interactionCreate', async (interaction) => {
     
-    // --- MUNCULKAN FORM MODAL ---
+    // --- 1. CEK BATASAN 1 USER 1 TIKET & MUNCULKAN FORM ---
     if (interaction.isButton() && interaction.customId === 'buka_modal') {
+        const category = interaction.guild.channels.cache.get(CATEGORY_ID);
+        
+        // Cek apakah ada channel yang mengandung nama user
+        const hasTicket = category.children.cache.some(channel => 
+            channel.name.includes(interaction.user.username.toLowerCase())
+        );
+
+        if (hasTicket) {
+            return interaction.reply({ 
+                content: '❌ Anda sudah memiliki tiket yang masih terbuka. Selesaikan dulu tiket tersebut!', 
+                ephemeral: true 
+            });
+        }
+
         const modal = new ModalBuilder()
             .setCustomId('form_tiket')
             .setTitle('Formulir Top Up');
@@ -77,15 +91,15 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.showModal(modal);
     }
 
-    // --- PROSES SUBMIT MODAL & BUAT CHANNEL ---
+    // --- 2. PROSES SUBMIT & BUAT CHANNEL ---
     if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'form_tiket') {
         const valUcp = interaction.fields.getTextInputValue('ucp');
         const valNama = interaction.fields.getTextInputValue('nama');
         const valItem = interaction.fields.getTextInputValue('item');
         
-        // Penomoran unik menggunakan 4 angka terakhir timestamp (karena GitHub Actions reset file)
-        const ticketID = Date.now().toString().slice(-3);
-        const channelName = `tiket-${interaction.user.username}-${ticketID}`;
+        const category = interaction.guild.channels.cache.get(CATEGORY_ID);
+        const ticketNum = (category.children.cache.size + 1).toString().padStart(3, '0');
+        const channelName = `tiket-${interaction.user.username}-${ticketNum}`;
 
         const ticketChannel = await interaction.guild.channels.create({
             name: channelName,
@@ -98,7 +112,7 @@ client.on('interactionCreate', async (interaction) => {
         });
 
         const embedInfo = new EmbedBuilder()
-            .setTitle(`Detail Tiket #${ticketID}`)
+            .setTitle(`Detail Tiket #${ticketNum}`)
             .addFields(
                 { name: '👤 User', value: `${interaction.user}`, inline: true },
                 { name: '🆔 UCP', value: valUcp, inline: true },
@@ -109,52 +123,40 @@ client.on('interactionCreate', async (interaction) => {
             .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('claim_tiket').setLabel('Claim Tiket').setEmoji('🙋‍♂️').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('tutup_tiket').setLabel('Selesai / Done').setEmoji('✅').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('done_tiket').setLabel('Done / Selesai').setEmoji('✅').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('tutup_tiket').setLabel('Tutup Tiket').setEmoji('🔒').setStyle(ButtonStyle.Danger)
         );
 
         await ticketChannel.send({ embeds: [embedInfo], components: [row] });
-        await interaction.reply({ content: `Tiket berhasil dibuat di ${ticketChannel}`, ephemeral: true });
+        await interaction.reply({ content: `✅ Tiket berhasil dibuat: ${ticketChannel}`, ephemeral: true });
     }
 
-    // --- LOGIKA CLAIM ---
-    if (interaction.isButton() && interaction.customId === 'claim_tiket') {
-        const claimEmbed = new EmbedBuilder()
-            .setDescription(`📢 Tiket ini telah di-claim oleh ${interaction.user}. Silakan tunggu proses selanjutnya.`)
-            .setColor('#E67E22');
-        
-        await interaction.reply({ embeds: [claimEmbed] });
-        
-        // Disable tombol claim
-        const disabledRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('claim_tiket').setLabel('Sudah di-Claim').setStyle(ButtonStyle.Success).setDisabled(true),
-            new ButtonBuilder().setCustomId('tutup_tiket').setLabel('Selesai / Done').setStyle(ButtonStyle.Danger)
-        );
-        await interaction.message.edit({ components: [disabledRow] });
-    }
+    // --- 3. LOGIKA DONE / SELESAI (TRANSKRIP + HAPUS) ---
+    if (interaction.isButton() && interaction.customId === 'done_tiket') {
+        await interaction.reply('⌛ Memproses transkrip log dan menutup tiket...');
 
-    // --- LOGIKA TUTUP & TRANSKRIP ---
-    if (interaction.isButton() && interaction.customId === 'tutup_tiket') {
-        await interaction.reply('Mencatat transkrip dan menghapus tiket...');
-
-        // Ambil 100 pesan terakhir untuk transkrip
         const messages = await interaction.channel.messages.fetch({ limit: 100 });
-        let logContent = `LOG TRANSKRIP TIKET: ${interaction.channel.name}\n\n`;
+        let logContent = `LOG TRANSKRIP TIKET SELESAI: ${interaction.channel.name}\n\n`;
         messages.reverse().forEach(m => {
             logContent += `[${m.createdAt.toLocaleString()}] ${m.author.tag}: ${m.content}\n`;
         });
 
-        // Kirim ke Channel Log
         const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
         if (logChannel) {
             const buffer = Buffer.from(logContent, 'utf-8');
             await logChannel.send({ 
-                content: `Tiket **${interaction.channel.name}** ditutup oleh **${interaction.user.tag}**`,
-                files: [{ attachment: buffer, name: `${interaction.channel.name}.txt` }] 
+                content: `✅ **TIKET SELESAI**: Channel **${interaction.channel.name}** telah diselesaikan oleh **${interaction.user.tag}**`,
+                files: [{ attachment: buffer, name: `${interaction.channel.name}-done.txt` }] 
             });
         }
 
-        setTimeout(() => interaction.channel.delete(), 3000);
+        setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
+    }
+
+    // --- 4. LOGIKA TUTUP (LANGSUNG HAPUS TANPA LOG) ---
+    if (interaction.isButton() && interaction.customId === 'tutup_tiket') {
+        await interaction.reply('⚠️ Menutup tiket tanpa log... menghapus dalam 3 detik.');
+        setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
     }
 });
 
