@@ -18,16 +18,17 @@ const CATEGORY_ID = '1112618218146771009';
 const LOG_CHANNEL_ID = '1357044655631499447'; 
 
 client.once('ready', () => {
-    console.log(`✅ Bot Tiket Online: ${client.user.tag}`);
+    console.log(`✅ Bot Tiket Pro Online: ${client.user.tag}`);
 });
 
-// --- PANEL UTAMA ---
+// --- PANEL UTAMA SETUP ---
 client.on('messageCreate', async (message) => {
     if (message.content === '!setup-tiket' && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         const embed = new EmbedBuilder()
             .setTitle('🛒 Ottibonynyo Store - Tiket Layanan')
             .setDescription('Silakan klik tombol di bawah untuk memulai proses Top Up atau Bantuan.')
-            .setColor('#5865F2');
+            .setColor('#5865F2')
+            .setFooter({ text: 'Ottibonynyo Store System' });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -48,37 +49,43 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton() && interaction.customId === 'buka_modal') {
         const category = interaction.guild.channels.cache.get(CATEGORY_ID);
         
-        // Cek apakah ada channel yang mengandung nama user
-        const hasTicket = category.children.cache.some(channel => 
+        if (!category) return interaction.reply({ content: "Error: Kategori tidak ditemukan!", ephemeral: true });
+
+        // Cari channel yang sudah ada milik user tersebut
+        const existingTicket = category.children.cache.find(channel => 
             channel.name.includes(interaction.user.username.toLowerCase())
         );
 
-        if (hasTicket) {
+        if (existingTicket) {
             return interaction.reply({ 
-                content: '❌ Anda sudah memiliki tiket yang masih terbuka. Selesaikan dulu tiket tersebut!', 
+                content: `❌ Anda sudah memiliki tiket yang masih terbuka di <#${existingTicket.id}>. Selesaikan dulu tiket tersebut!`, 
                 ephemeral: true 
             });
         }
 
+        // Munculkan Modal Formulir
         const modal = new ModalBuilder()
             .setCustomId('form_tiket')
-            .setTitle('Formulir Top Up');
+            .setTitle('Formulir Detail Pesanan');
 
         const ucp = new TextInputBuilder()
             .setCustomId('ucp')
             .setLabel("UCP / ID AKUN")
+            .setPlaceholder("Masukkan ID Akun Anda")
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
         const nama = new TextInputBuilder()
             .setCustomId('nama')
             .setLabel("NAMA KARAKTER")
+            .setPlaceholder("Masukkan Nama Karakter")
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
         const item = new TextInputBuilder()
             .setCustomId('item')
             .setLabel("ITEM TOPUP")
+            .setPlaceholder("Contoh: 1000 Gold / VIP Member")
             .setStyle(TextInputStyle.Paragraph)
             .setRequired(true);
 
@@ -91,52 +98,73 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.showModal(modal);
     }
 
-    // --- 2. PROSES SUBMIT & BUAT CHANNEL ---
+    // --- 2. PROSES SUBMIT FORM & BUAT CHANNEL (NOMOR ACAK) ---
     if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'form_tiket') {
         const valUcp = interaction.fields.getTextInputValue('ucp');
         const valNama = interaction.fields.getTextInputValue('nama');
         const valItem = interaction.fields.getTextInputValue('item');
         
-        const category = interaction.guild.channels.cache.get(CATEGORY_ID);
-        const ticketNum = (category.children.cache.size + 1).toString().padStart(3, '0');
-        const channelName = `tiket-${interaction.user.username}-${ticketNum}`;
+        // Membuat Angka Acak Unik (4 Digit)
+        const randomID = Math.floor(1000 + Math.random() * 9000); 
+        const channelName = `tiket-${interaction.user.username}-${randomID}`;
 
-        const ticketChannel = await interaction.guild.channels.create({
-            name: channelName,
-            type: ChannelType.GuildText,
-            parent: CATEGORY_ID,
-            permissionOverwrites: [
-                { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-            ],
-        });
+        try {
+            const ticketChannel = await interaction.guild.channels.create({
+                name: channelName,
+                type: ChannelType.GuildText,
+                parent: CATEGORY_ID,
+                permissionOverwrites: [
+                    {
+                        id: interaction.guild.id,
+                        deny: [PermissionsBitField.Flags.ViewChannel],
+                    },
+                    {
+                        id: interaction.user.id,
+                        allow: [
+                            PermissionsBitField.Flags.ViewChannel, 
+                            PermissionsBitField.Flags.SendMessages, 
+                            PermissionsBitField.Flags.ReadMessageHistory,
+                            PermissionsBitField.Flags.AttachFiles
+                        ],
+                    },
+                ],
+            });
 
-        const embedInfo = new EmbedBuilder()
-            .setTitle(`Detail Tiket #${ticketNum}`)
-            .addFields(
-                { name: '👤 User', value: `${interaction.user}`, inline: true },
-                { name: '🆔 UCP', value: valUcp, inline: true },
-                { name: '🎮 Karakter', value: valNama, inline: true },
-                { name: '📦 Item', value: valItem }
-            )
-            .setColor('#2ecc71')
-            .setTimestamp();
+            const embedInfo = new EmbedBuilder()
+                .setTitle(`Detail Tiket #${randomID}`)
+                .addFields(
+                    { name: '👤 User', value: `${interaction.user}`, inline: true },
+                    { name: '🆔 UCP', value: valUcp, inline: true },
+                    { name: '🎮 Karakter', value: valNama, inline: true },
+                    { name: '📦 Item', value: valItem }
+                )
+                .setColor('#2ecc71')
+                .setTimestamp();
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('done_tiket').setLabel('Done / Selesai').setEmoji('✅').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('tutup_tiket').setLabel('Tutup Tiket').setEmoji('🔒').setStyle(ButtonStyle.Danger)
-        );
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('done_tiket').setLabel('Done / Selesai').setEmoji('✅').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('tutup_tiket').setLabel('Tutup Tiket').setEmoji('🔒').setStyle(ButtonStyle.Danger)
+            );
 
-        await ticketChannel.send({ embeds: [embedInfo], components: [row] });
-        await interaction.reply({ content: `✅ Tiket berhasil dibuat: ${ticketChannel}`, ephemeral: true });
+            await ticketChannel.send({ embeds: [embedInfo], components: [row] });
+            await interaction.reply({ content: `✅ Tiket Anda berhasil dibuat: ${ticketChannel}`, ephemeral: true });
+
+        } catch (error) {
+            console.error(error);
+            await interaction.reply({ content: 'Terjadi kesalahan saat membuat channel tiket.', ephemeral: true });
+        }
     }
 
-    // --- 3. LOGIKA DONE / SELESAI (TRANSKRIP + HAPUS) ---
+    // --- 3. LOGIKA DONE / SELESAI (LOG + HAPUS) ---
     if (interaction.isButton() && interaction.customId === 'done_tiket') {
         await interaction.reply('⌛ Memproses transkrip log dan menutup tiket...');
 
+        // Ambil 100 pesan terakhir untuk log
         const messages = await interaction.channel.messages.fetch({ limit: 100 });
-        let logContent = `LOG TRANSKRIP TIKET SELESAI: ${interaction.channel.name}\n\n`;
+        let logContent = `LOG TRANSKRIP TIKET: ${interaction.channel.name}\n`;
+        logContent += `Ditutup Oleh: ${interaction.user.tag}\n`;
+        logContent += `----------------------------------------\n\n`;
+        
         messages.reverse().forEach(m => {
             logContent += `[${m.createdAt.toLocaleString()}] ${m.author.tag}: ${m.content}\n`;
         });
@@ -145,17 +173,17 @@ client.on('interactionCreate', async (interaction) => {
         if (logChannel) {
             const buffer = Buffer.from(logContent, 'utf-8');
             await logChannel.send({ 
-                content: `✅ **TIKET SELESAI**: Channel **${interaction.channel.name}** telah diselesaikan oleh **${interaction.user.tag}**`,
-                files: [{ attachment: buffer, name: `${interaction.channel.name}-done.txt` }] 
+                content: `✅ **DONE**: Tiket **${interaction.channel.name}** telah selesai.`,
+                files: [{ attachment: buffer, name: `${interaction.channel.name}-log.txt` }] 
             });
         }
 
         setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
     }
 
-    // --- 4. LOGIKA TUTUP (LANGSUNG HAPUS TANPA LOG) ---
+    // --- 4. LOGIKA TUTUP (HAPUS TANPA LOG) ---
     if (interaction.isButton() && interaction.customId === 'tutup_tiket') {
-        await interaction.reply('⚠️ Menutup tiket tanpa log... menghapus dalam 3 detik.');
+        await interaction.reply('⚠️ Menutup tiket tanpa mencatat log...');
         setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
     }
 });
