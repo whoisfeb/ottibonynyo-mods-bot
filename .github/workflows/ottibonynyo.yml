@@ -30,4 +30,4 @@ jobs:
         # GANTI BAGIAN INI: Memanggil npm start agar menjalankan kedua file sekaligus
         run: npm start 
         env:
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
