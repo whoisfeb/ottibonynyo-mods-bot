@@ -10,7 +10,7 @@
     "axios": "^1.6.0"
   },
   "scripts": {
-    "start": "node index.js & node welcomer.js",
+    "start": "node index.js & node welcomer.js & tiket-bot.js",
     "build": "echo 'No build step required'"
   }
 }
