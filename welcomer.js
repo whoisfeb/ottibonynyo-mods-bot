@@ -11,7 +11,7 @@ const client = new Client({
 });
 
 // Ambil token dari environment
-const TOKEN = process.env.DISCORD_BOT_TOKEN;
+const TOKEN = process.env.DISCORD_TOKEN;
 
 // 2. Event ketika member baru bergabung
 client.on('guildMemberAdd', async (member) => {
